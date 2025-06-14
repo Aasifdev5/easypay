@@ -778,6 +778,7 @@ class FuelStationApp extends StatefulWidget {
 
 class _FuelStationAppState extends State<FuelStationApp> {
   String? _selectedStation;
+  String? _selectedCity;
   String _selectedFuelType = 'Diesel';
   List<Station> _stations = [];
   bool _isLoading = false;
@@ -785,6 +786,20 @@ class _FuelStationAppState extends State<FuelStationApp> {
   int _currentScreen = 0;
   DateTime? _lastFetchTime;
   final Map<String, List<Station>> _stationCache = {};
+  final Map<int, int> _stationCountByCity = {};
+
+  final List<Map<String, dynamic>> _cities = [
+    {'code': 0, 'name': 'All Cities'},
+    {'code': 1, 'name': 'Santa Cruz'},
+    {'code': 2, 'name': 'Cochabamba'},
+    {'code': 3, 'name': 'La Paz'},
+    {'code': 4, 'name': 'Potosí'},
+    {'code': 5, 'name': 'Oruro'},
+    {'code': 6, 'name': 'Beni'},
+    {'code': 7, 'name': 'Sucre'},
+    {'code': 8, 'name': 'Tarija'},
+    {'code': 9, 'name': 'Pando'},
+  ];
 
   final String _apiUrl =
       'http://bo_baas_bcp_server.petroboxinc.com:8102/api/stock/getstockinfobyfuelid';
@@ -834,6 +849,31 @@ class _FuelStationAppState extends State<FuelStationApp> {
     }
   }
 
+  void _calculateStationCountsByCity() {
+    _stationCountByCity.clear();
+    for (var city in _cities) {
+      _stationCountByCity[city['code']] = 0;
+    }
+
+    for (var station in _stations) {
+      bool fuelMatch = station.mainFuelType == _selectedFuelType;
+      if (fuelMatch) {
+        for (var city in _cities) {
+          if (city['name'] == 'All Cities') {
+            _stationCountByCity[city['code']] =
+                (_stationCountByCity[city['code']] ?? 0) + 1;
+          } else if (station.city
+              .toLowerCase()
+              .contains(city['name'].toLowerCase())) {
+            _stationCountByCity[city['code']] =
+                (_stationCountByCity[city['code']] ?? 0) + 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   Future<void> _fetchStations({String fuelType = 'Diesel'}) async {
     if (_lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inSeconds < 10) {
@@ -855,6 +895,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
         _stations = _stationCache[cacheKey]!;
         _isLoading = false;
         _errorMessage = null;
+        _calculateStationCountsByCity();
       });
       return;
     }
@@ -879,11 +920,13 @@ class _FuelStationAppState extends State<FuelStationApp> {
       });
 
       if (response.statusCode == 200) {
-        final parsedData = await parseStations(response.body);
+        final parsedData = await parseStations(
+            response.body); // Removed compute for simplicity
         setState(() {
           _stations = parsedData['stations'];
           _stationCache[cacheKey] = _stations;
           _isLoading = false;
+          _calculateStationCountsByCity();
         });
       } else {
         setState(() {
@@ -901,10 +944,14 @@ class _FuelStationAppState extends State<FuelStationApp> {
     }
   }
 
-  List<Station> get filteredStations => _stations
-      .where((station) => station.mainFuelType == _selectedFuelType)
-      .toList()
-    ..sort((a, b) => a.distance.compareTo(b.distance));
+  List<Station> get filteredStations => _stations.where((station) {
+        bool cityMatch = _selectedCity == null ||
+            _selectedCity == 'All Cities' ||
+            station.city.toLowerCase().contains(_selectedCity!.toLowerCase());
+        bool fuelMatch = station.mainFuelType == _selectedFuelType;
+        return cityMatch && fuelMatch;
+      }).toList()
+        ..sort((a, b) => a.distance.compareTo(b.distance));
 
   Widget _buildFuelTypeSelectionScreen(BuildContext context) {
     return Scaffold(
@@ -972,6 +1019,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
         setState(() {
           _selectedFuelType = fuelType;
           _currentScreen = 1;
+          _calculateStationCountsByCity();
           _fetchStations(fuelType: fuelType);
         });
       },
@@ -1015,13 +1063,14 @@ class _FuelStationAppState extends State<FuelStationApp> {
                   index: _currentScreen,
                   children: [
                     _buildFuelTypeSelectionScreen(context),
+                    _buildCityFilterScreen(context),
                     _buildStationListScreen(context),
                   ],
                 ),
     );
   }
 
-  Widget _buildStationListScreen(BuildContext context) {
+  Widget _buildCityFilterScreen(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D0D),
@@ -1030,6 +1079,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
           onPressed: () {
             setState(() {
               _currentScreen = 0;
+              _selectedCity = null;
             });
           },
         ),
@@ -1056,7 +1106,131 @@ class _FuelStationAppState extends State<FuelStationApp> {
             children: [
               SizedBox(height: MediaQuery.of(context).size.height * 0.038),
               Text(
-                'Estaciones con $_selectedFuelType',
+                'Encuentra una estación cerca',
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.051,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).size.height * 0.019),
+              Text(
+                'Selecciona una ciudad',
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.041,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).size.height * 0.019),
+              Wrap(
+                spacing: MediaQuery.of(context).size.width * 0.041,
+                runSpacing: MediaQuery.of(context).size.height * 0.019,
+                children: _cities.map((city) {
+                  final cityCode = city['code'];
+                  final stationCount = _stationCountByCity[cityCode] ?? 0;
+                  final countText = stationCount == 1
+                      ? '1 Estación'
+                      : '$stationCount Estaciones';
+
+                  return _buildCityCard(
+                    city['name'],
+                    countText,
+                    city['code'],
+                    context,
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCityCard(
+      String city, String dispensers, int code, BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCity = city;
+          _currentScreen = 2;
+        });
+      },
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.41,
+        height: MediaQuery.of(context).size.height * 0.104,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(
+            MediaQuery.of(context).size.width * 0.031,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                city,
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.041,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: MediaQuery.of(context).size.height * 0.005),
+              Text(
+                dispensers,
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.036,
+                  color: const Color(0xFFFFC107),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStationListScreen(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D0D0D),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              _currentScreen = 1;
+              _selectedCity = null;
+            });
+          },
+        ),
+        title: Image.asset(
+          'assets/images/logo.png',
+          height: MediaQuery.of(context).size.height * 0.05,
+          fit: BoxFit.contain,
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => _logout(context),
+            tooltip: 'Cerrar Sesión',
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width * 0.062,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.038),
+              Text(
+                'Estaciones en ${_selectedCity ?? 'Bolivia'}',
                 style: TextStyle(
                   fontSize: MediaQuery.of(context).size.width * 0.051,
                   fontWeight: FontWeight.bold,
@@ -1067,7 +1241,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
               if (filteredStations.isEmpty)
                 const Center(
                   child: Text(
-                    'No se encontraron estaciones para este combustible',
+                    'No se encontraron estaciones para este combustible o ciudad',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white,
@@ -1076,8 +1250,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
                   ),
                 ),
               ListView.builder(
-                key:
-                    ValueKey('${_selectedFuelType}_${filteredStations.length}'),
+                key: ValueKey(
+                    '${_selectedCity}_${_selectedFuelType}_${filteredStations.length}'),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filteredStations.length,
@@ -1271,7 +1445,11 @@ class _FuelStationAppState extends State<FuelStationApp> {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
-    return '$cleaned, Bolivia';
+    if (city.isNotEmpty && city != 'All Cities') {
+      return '$cleaned, $city, Bolivia';
+    } else {
+      return '$cleaned, Bolivia';
+    }
   }
 
   Future<List<String>> _getWazeUrls(String address) async {
@@ -1295,6 +1473,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
   Future<void> _launchEnhancedNavigation(String app, String address,
       BuildContext context, String rawAddress) async {
     try {
+      final String cityName = _selectedCity ?? 'Bolivia';
+
       if (app == 'Google') {
         final encodedAddress = Uri.encodeComponent(address);
         final url =
@@ -1313,7 +1493,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
           ),
         );
 
-        final String wazeAddress = _enhancedWazeAddress(rawAddress, '');
+        final String wazeAddress = _enhancedWazeAddress(rawAddress, cityName);
         final List<String> wazeUrls = await _getWazeUrls(wazeAddress);
 
         bool launched = false;
