@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher.dart'
+    show LaunchMode, launchUrl, canLaunchUrl;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:collection/collection.dart';
 import 'dart:convert';
 import 'dart:async';
 
@@ -66,35 +68,31 @@ class _SplashScreenState extends State<SplashScreen> {
           headers: {'Authorization': 'Bearer $token'},
         ).timeout(const Duration(seconds: 10));
 
-        if (response.statusCode == 200) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const FuelStationApp()),
-            );
-          }
+        if (response.statusCode == 200 && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const FuelStationApp()),
+          );
         } else {
           await prefs.remove('auth_token');
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
             );
           }
         }
-      } else {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
+      } else if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       }
     }
@@ -147,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Correo electrónico y contraseña son obligatorios';
+        _errorMessage = 'Correo electrónico y contraseña son obligatorios.';
       });
       return;
     }
@@ -186,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const FuelStationApp()),
+            MaterialPageRoute(builder: (_) => const FuelStationApp()),
           );
         }
       } else {
@@ -200,9 +198,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'Error: $e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -282,9 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text(
                           'Iniciar Sesión',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
                 SizedBox(height: MediaQuery.of(context).size.height * 0.02),
@@ -292,18 +290,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      '¿No tienes una cuenta? ',
+                      '¿No tienes cuenta? ',
                       style: TextStyle(color: Colors.grey),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegistrationScreen(),
-                          ),
-                        );
-                      },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const RegistrationScreen()),
+                      ),
                       child: const Text(
                         'Regístrate',
                         style: TextStyle(
@@ -428,7 +423,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const FuelStationApp()),
+            MaterialPageRoute(builder: (_) => const FuelStationApp()),
           );
         }
       } else {
@@ -442,9 +437,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _errorMessage = 'Error: $e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -547,9 +544,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         child: const Text(
                           'Registrarse',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
                 SizedBox(height: MediaQuery.of(context).size.height * 0.02),
@@ -557,18 +552,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      '¿Ya tienes una cuenta? ',
+                      '¿Ya tienes cuenta? ',
                       style: TextStyle(color: Colors.grey),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginScreen(),
-                          ),
-                        );
-                      },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      ),
                       child: const Text(
                         'Inicia Sesión',
                         style: TextStyle(
@@ -658,12 +649,11 @@ class AddressCache {
   }
 }
 
-// Top-level function for isolate-safe JSON parsing
 Map<String, dynamic> parseStations(String responseBody) {
   try {
     final data = jsonDecode(responseBody);
     if (data is! Map<String, dynamic>) {
-      print('Error: Response is not a valid JSON object');
+      debugPrint('Error: Response is not a valid JSON object');
       return {'stations': <Station>[]};
     }
 
@@ -673,10 +663,10 @@ Map<String, dynamic> parseStations(String responseBody) {
     }
     return {'stations': stations};
   } on FormatException catch (e) {
-    print('JSON parsing error: $e');
+    debugPrint('JSON parsing error: $e');
     return {'stations': <Station>[]};
   } catch (e) {
-    print('Unexpected error parsing stations: $e');
+    debugPrint('Unexpected error parsing stations: $e');
     return {'stations': <Station>[]};
   }
 }
@@ -690,7 +680,7 @@ List<Station> parseStationsFromResponse(List<dynamic> estaciones) {
           var detail = details[0];
           if (detail is Map) {
             String rawAddress = detail['direccion']?.toString() ?? 'No address';
-            rawAddress = rawAddress.replaceAll('Nu00BA', 'Nº');
+            rawAddress = rawAddress.replaceAll('\u00BA', 'Nº');
             String city = detail['ciudad']?.split('-')[0].trim() ?? 'Unknown';
             String address = '$rawAddress, $city';
             double latitude = detail['latitud']?.toDouble() ?? 0.0;
@@ -704,9 +694,11 @@ List<Station> parseStationsFromResponse(List<dynamic> estaciones) {
               double stock = (tank['stock'] ?? 0).toDouble();
               stock = stock < 0 ? 0 : stock;
 
-              List<String> fuelTypes = normalizeFuelType(
-                  tank['descripcion']?.toString().split(' - ').last ?? '',
-                  nroproducto);
+              String description = tank['descripcion']?.toString() ?? '';
+              String fuelDesc = description.contains(' - ')
+                  ? description.split(' - ').lastOrNull ?? description
+                  : description;
+              List<String> fuelTypes = normalizeFuelType(fuelDesc, nroproducto);
               if (fuelTypes.isEmpty) continue;
 
               String mainFuelType = fuelTypes[0];
@@ -715,7 +707,7 @@ List<Station> parseStationsFromResponse(List<dynamic> estaciones) {
                   '$displayFuelType: ${stock.toStringAsFixed(2)} L';
               String lastUpdated = tank['ultimaactualizacion'] != null
                   ? 'Última actualización: ${tank['ultimaactualizacion']}'
-                  : 'Última actualización: ${DateFormat('EEE dd MMM HH:mm').format(DateTime.now())}';
+                  : 'Última actualización: ${DateFormat('EEE dd MMM yyyy HH:mm').format(DateTime.now())}';
 
               stations.add(Station(
                 name: stationName,
@@ -783,8 +775,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
   bool _isLoading = false;
   String? _errorMessage;
   int _currentScreen = 0;
-  DateTime? _lastFetchTime;
-  final Map<String, List<Station>> _stationCache = {};
+  String _currentFetchKey = '';
 
   final String _apiUrl =
       'http://bo_baas_bcp_server.petroboxinc.com:8102/api/stock/getstockinfobyfuelid';
@@ -792,11 +783,13 @@ class _FuelStationAppState extends State<FuelStationApp> {
   final double _latitude = -17.780578;
   final double _longitude = -63.1921634;
   final int _quantity = 5;
+  static const int _retryCount = 3;
+  static const Duration _retryDelay = Duration(seconds: 2);
 
   @override
   void initState() {
     super.initState();
-    _fetchStations();
+    _fetchStations(fuelType: _selectedFuelType);
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -818,7 +811,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
             );
           }
         } else {
@@ -834,70 +827,107 @@ class _FuelStationAppState extends State<FuelStationApp> {
     }
   }
 
-  Future<void> _fetchStations({String fuelType = 'Diesel'}) async {
-    if (_lastFetchTime != null &&
-        DateTime.now().difference(_lastFetchTime!).inSeconds < 10) {
-      return;
+  Future<void> _fetchStations({required String fuelType}) async {
+    final fetchKey = '${fuelType}_${DateTime.now().millisecondsSinceEpoch}';
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _currentFetchKey = fetchKey;
+        _stations = [];
+      });
     }
+    debugPrint('Starting fetch for $fuelType with key $fetchKey');
 
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
-      setState(() {
-        _errorMessage = 'No hay conexión a internet';
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final cacheKey = fuelType;
-    if (_stationCache.containsKey(cacheKey)) {
-      setState(() {
-        _stations = _stationCache[cacheKey]!;
-        _isLoading = false;
-        _errorMessage = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _stations = [];
-    });
-
-    try {
-      final fuelId = _fuelTypes.indexOf(fuelType) + 1;
-      final response = await http.get(
-        Uri.parse(
-            '$_apiUrl?fuel=$fuelId&Latitude=$_latitude&Longitude=$_longitude&Quantity=$_quantity'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic UEVUUk9CT1hfU1RPQ0s6UEVUUk9CT1hfU1RPQ0s=',
-        },
-      ).timeout(const Duration(seconds: 10), onTimeout: () {
-        throw TimeoutException('Request timed out');
-      });
-
-      if (response.statusCode == 200) {
-        final parsedData = await parseStations(response.body);
+      if (mounted) {
         setState(() {
-          _stations = parsedData['stations'];
-          _stationCache[cacheKey] = _stations;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Error al cargar datos: ${response.statusCode}';
+          _errorMessage = 'No hay conexión a internet';
           _isLoading = false;
         });
       }
+      debugPrint('No internet connection');
+      return;
+    }
+
+    try {
+      final fuelId = _fuelTypes.indexOf(fuelType) + 1;
+      int attempts = 0;
+      bool success = false;
+      List<Station> fetchedStations = [];
+
+      while (attempts < _retryCount && !success) {
+        attempts++;
+        try {
+          final response = await http.get(
+            Uri.parse(
+                '$_apiUrl?fuel=$fuelId&Latitude=$_latitude&Longitude=$_longitude&Quantity=$_quantity'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Basic UEVUUk9CT1hfU1RPQ0s6UEVUUk9CT1hfU1RPQ0s=',
+            },
+          ).timeout(const Duration(seconds: 15), onTimeout: () {
+            throw TimeoutException('Request timed out');
+          });
+
+          debugPrint(
+              'API Response Status: ${response.statusCode}, Attempt: $attempts, Fetch: $fetchKey');
+          debugPrint('API Response Body: ${response.body}');
+
+          if (_currentFetchKey != fetchKey) {
+            debugPrint('Fetch cancelled: Newer fetch started');
+            return;
+          }
+
+          if (response.statusCode == 200) {
+            final parsedData = parseStations(response.body);
+            fetchedStations = parsedData['stations'];
+            success = true;
+          } else {
+            debugPrint(
+                'API Error: Status ${response.statusCode}, Body: ${response.body}');
+          }
+        } catch (e) {
+          debugPrint('Fetch attempt $attempts failed: $e');
+          if (attempts < _retryCount) {
+            await Future.delayed(_retryDelay);
+          }
+        }
+      }
+
+      if (_currentFetchKey != fetchKey) {
+        debugPrint('Fetch cancelled: Newer fetch started');
+        return;
+      }
+
+      if (success && mounted) {
+        setState(() {
+          _stations = fetchedStations;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        debugPrint(
+            'Successfully fetched ${_stations.length} stations for fuel: $fuelType');
+      } else if (mounted) {
+        setState(() {
+          _errorMessage = 'Error al cargar datos tras $attempts intentos';
+          _isLoading = false;
+        });
+        debugPrint('Failed to fetch stations after $attempts attempts');
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error: $e';
-        _isLoading = false;
-      });
-    } finally {
-      _lastFetchTime = DateTime.now();
+      if (_currentFetchKey != fetchKey) {
+        debugPrint('Fetch cancelled: Newer fetch started');
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error inesperado: $e';
+          _isLoading = false;
+        });
+        debugPrint('Unexpected error in fetchStations: $e');
+      }
     }
   }
 
@@ -911,9 +941,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D0D),
         leading: Padding(
-          padding: EdgeInsets.only(
-            left: MediaQuery.of(context).size.width * 0.032,
-          ),
+          padding:
+              EdgeInsets.only(left: MediaQuery.of(context).size.width * 0.032),
           child: Image.asset(
             'assets/images/logo.png',
             height: MediaQuery.of(context).size.height * 0.09,
@@ -932,8 +961,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width * 0.062,
-          ),
+              horizontal: MediaQuery.of(context).size.width * 0.062),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -953,11 +981,9 @@ class _FuelStationAppState extends State<FuelStationApp> {
                 mainAxisSpacing: MediaQuery.of(context).size.height * 0.014,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildFuelButton('Diesel', context),
-                  _buildFuelButton('Gas', context),
-                  _buildFuelButton('Gasolina', context),
-                ],
+                children: _fuelTypes
+                    .map((fuel) => _buildFuelButton(fuel, context))
+                    .toList(),
               ),
             ],
           ),
@@ -969,20 +995,24 @@ class _FuelStationAppState extends State<FuelStationApp> {
   Widget _buildFuelButton(String fuelType, BuildContext context) {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedFuelType = fuelType;
-          _currentScreen = 1;
+        if (mounted) {
+          setState(() {
+            _selectedFuelType = fuelType;
+            _currentScreen = 1;
+            _stations = [];
+            _errorMessage = null;
+            _isLoading = true;
+          });
           _fetchStations(fuelType: fuelType);
-        });
+        }
       },
       child: Container(
         width: MediaQuery.of(context).size.width * 0.385,
         height: MediaQuery.of(context).size.height * 0.076,
         decoration: BoxDecoration(
           color: const Color(0xFF1C1C1E),
-          borderRadius: BorderRadius.circular(
-            MediaQuery.of(context).size.width * 0.031,
-          ),
+          borderRadius:
+              BorderRadius.circular(MediaQuery.of(context).size.width * 0.031),
         ),
         child: Center(
           child: Text(
@@ -1001,23 +1031,13 @@ class _FuelStationAppState extends State<FuelStationApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : IndexedStack(
-                  index: _currentScreen,
-                  children: [
-                    _buildFuelTypeSelectionScreen(context),
-                    _buildStationListScreen(context),
-                  ],
-                ),
+      body: IndexedStack(
+        index: _currentScreen,
+        children: [
+          _buildFuelTypeSelectionScreen(context),
+          _buildStationListScreen(context),
+        ],
+      ),
     );
   }
 
@@ -1028,9 +1048,14 @@ class _FuelStationAppState extends State<FuelStationApp> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            setState(() {
-              _currentScreen = 0;
-            });
+            if (mounted) {
+              setState(() {
+                _currentScreen = 0;
+                _stations = [];
+                _errorMessage = null;
+                _isLoading = false;
+              });
+            }
           },
         ),
         title: Image.asset(
@@ -1039,6 +1064,20 @@ class _FuelStationAppState extends State<FuelStationApp> {
           fit: BoxFit.contain,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              if (mounted) {
+                setState(() {
+                  _isLoading = true;
+                  _errorMessage = null;
+                  _stations = [];
+                });
+                _fetchStations(fuelType: _selectedFuelType);
+              }
+            },
+            tooltip: 'Actualizar',
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () => _logout(context),
@@ -1049,8 +1088,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width * 0.062,
-          ),
+              horizontal: MediaQuery.of(context).size.width * 0.062),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1064,20 +1102,96 @@ class _FuelStationAppState extends State<FuelStationApp> {
                 ),
               ),
               SizedBox(height: MediaQuery.of(context).size.height * 0.019),
-              if (filteredStations.isEmpty)
+              if (_isLoading)
                 const Center(
-                  child: Text(
-                    'No se encontraron estaciones para este combustible',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFFFFC107)),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Cargando estaciones...',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_errorMessage != null)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.019),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = true;
+                              _errorMessage = null;
+                            });
+                            _fetchStations(fuelType: _selectedFuelType);
+                          }
+                        },
+                        child: const Text('Reintentar'),
+                      ),
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.019),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() {
+                              _currentScreen = 0;
+                              _stations = [];
+                              _errorMessage = null;
+                              _isLoading = false;
+                            });
+                          }
+                        },
+                        child: const Text('Cambiar Combustible'),
+                      ),
+                    ],
+                  ),
+                )
+              else if (filteredStations.isEmpty)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'No se encontraron estaciones para este combustible',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.019),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() {
+                              _currentScreen = 0;
+                              _stations = [];
+                              _errorMessage = null;
+                              _isLoading = false;
+                            });
+                          }
+                        },
+                        child: const Text('Cambiar Combustible'),
+                      ),
+                    ],
                   ),
                 ),
               ListView.builder(
-                key:
-                    ValueKey('${_selectedFuelType}_${filteredStations.length}'),
+                key: ValueKey(
+                    '${_selectedFuelType}_${filteredStations.length}_${_currentFetchKey}'),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filteredStations.length,
@@ -1085,9 +1199,11 @@ class _FuelStationAppState extends State<FuelStationApp> {
                   final station = filteredStations[index];
                   return GestureDetector(
                     onTap: () {
-                      setState(() {
-                        _selectedStation = station.name;
-                      });
+                      if (mounted) {
+                        setState(() {
+                          _selectedStation = station.name;
+                        });
+                      }
                     },
                     onLongPress: () => _showNavigationOptions(station, context),
                     child: _buildStationCard(station, context),
@@ -1103,14 +1219,12 @@ class _FuelStationAppState extends State<FuelStationApp> {
 
   Widget _buildStationCard(Station station, BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(
-        bottom: MediaQuery.of(context).size.height * 0.019,
-      ),
+      margin:
+          EdgeInsets.only(bottom: MediaQuery.of(context).size.height * 0.019),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(
-          MediaQuery.of(context).size.width * 0.041,
-        ),
+        borderRadius:
+            BorderRadius.circular(MediaQuery.of(context).size.width * 0.041),
       ),
       child: Padding(
         padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.019),
@@ -1144,19 +1258,15 @@ class _FuelStationAppState extends State<FuelStationApp> {
             SizedBox(height: MediaQuery.of(context).size.height * 0.019),
             Text(
               station.address,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFFA0A0A0),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFFA0A0A0)),
             ),
             SizedBox(height: MediaQuery.of(context).size.height * 0.014),
             Text(
               station.displayFuelType,
               style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white),
             ),
             SizedBox(height: MediaQuery.of(context).size.height * 0.014),
             Text(
@@ -1179,10 +1289,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
             SizedBox(height: MediaQuery.of(context).size.height * 0.014),
             Text(
               'Distancia: ${station.distance.toStringAsFixed(2)} km',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFFA0A0A0),
-              ),
+              style: const TextStyle(fontSize: 12, color: Color(0xFFA0A0A0)),
             ),
             SizedBox(height: MediaQuery.of(context).size.height * 0.014),
             Row(
@@ -1219,21 +1326,18 @@ class _FuelStationAppState extends State<FuelStationApp> {
           ),
         ),
         onPressed: () =>
-            _launchEnhancedNavigation(label, address, context, rawAddress),
+            _launchEnhancedNavigation(context, label, address, rawAddress),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: MediaQuery.of(context).size.width * 0.05,
-              color: const Color(0xFFFFC107),
-            ),
+            Icon(icon,
+                size: MediaQuery.of(context).size.width * 0.05,
+                color: const Color(0xFFFFC107)),
             SizedBox(width: MediaQuery.of(context).size.width * 0.02),
             Text(
               label,
               style: TextStyle(
-                fontSize: MediaQuery.of(context).size.width * 0.035,
-              ),
+                  fontSize: MediaQuery.of(context).size.width * 0.035),
             ),
           ],
         ),
@@ -1243,7 +1347,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
 
   String _enhancedWazeAddress(String rawAddress, String city) {
     final addressParts = rawAddress.split(',');
-    String streetAddress = addressParts.first.trim();
+    String streetAddress =
+        addressParts.isNotEmpty ? addressParts.first.trim() : rawAddress;
 
     Map<String, String> abbreviations = {
       'Nº': '',
@@ -1292,8 +1397,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
     await prefs.setString('preferred_nav_app', app);
   }
 
-  Future<void> _launchEnhancedNavigation(String app, String address,
-      BuildContext context, String rawAddress) async {
+  Future<void> _launchEnhancedNavigation(BuildContext context, String app,
+      String address, String rawAddress) async {
     try {
       if (app == 'Google') {
         final encodedAddress = Uri.encodeComponent(address);
@@ -1308,9 +1413,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
       } else if (app == 'Waze') {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Preparando navegación...'),
-            duration: Duration(seconds: 1),
-          ),
+              content: Text('Preparando navegación...'),
+              duration: Duration(seconds: 1)),
         );
 
         final String wazeAddress = _enhancedWazeAddress(rawAddress, '');
@@ -1328,7 +1432,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
                 break;
               }
             } catch (e) {
-              print('Failed to launch Waze with URL $url');
+              debugPrint('Failed to launch Waze with URL $url: $e');
             }
           }
         }
@@ -1357,9 +1461,8 @@ class _FuelStationAppState extends State<FuelStationApp> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al abrir la navegación: $e'),
-          duration: const Duration(seconds: 3),
-        ),
+            content: Text('Error al abrir la navegación: $e'),
+            duration: const Duration(seconds: 3)),
       );
     }
   }
@@ -1368,7 +1471,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
       Station station, BuildContext context) async {
     final String? selectedApp = await showDialog<String>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1C1C1E),
           title: const Text('Navegar a estación',
@@ -1407,7 +1510,7 @@ class _FuelStationAppState extends State<FuelStationApp> {
 
     if (selectedApp != null) {
       await _launchEnhancedNavigation(
-          selectedApp, station.address, context, station.rawAddress);
+          context, selectedApp, station.address, station.rawAddress);
       await _setPreferredNavigationApp(selectedApp);
     }
   }
